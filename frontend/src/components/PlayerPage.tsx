@@ -178,13 +178,13 @@ export default function PlayerPage() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }}
-          style={{ position: 'relative', background: '#000', width: '100%', aspectRatio: isMobile ? '16/9' : undefined, maxHeight: isMobile ? undefined : 'calc(100vh - 52px - 180px)' }}
+          style={{ position: 'relative', background: '#000', width: '100%', aspectRatio: '16/9' }}
           onMouseMove={resetTimer} onTouchStart={resetTimer}
         >
           <video
             ref={videoRef}
             src={src}
-            style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain', minHeight: isMobile ? undefined : 400 }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
             onTimeUpdate={() => { const v = videoRef.current; if (v) setCurrentTime(v.currentTime); }}
             onLoadedMetadata={() => { const v = videoRef.current; if (v) setDuration(v.duration); }}
             onPlay={() => setPlaying(true)}
@@ -198,96 +198,87 @@ export default function PlayerPage() {
           {/* Left gradient for title legibility */}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(0,0,0,0.65) 0%, transparent 50%)', pointerEvents: 'none' }} />
 
-          {/* ── UP NEXT overlay — inside video, right side ── */}
+          {/* ── UP NEXT overlay — always visible, top-right inside video ── */}
           {!isMobile && related.length > 0 && (
-            <AnimatePresence>
-              {showControls && (
+            <motion.div
+              initial={{ opacity: 0, x: 32 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ ...spring, delay: 0.2 }}
+              style={{
+                position: 'absolute', top: 16, right: 16,
+                width: 300,
+                zIndex: 25,
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}
+            >
+              <p style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.16em',
+                textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)',
+                marginBottom: 6,
+              }}>
+                Up Next
+              </p>
+
+              {related.slice(0, 4).map((v, i) => (
                 <motion.div
-                  key="upnext-panel"
+                  key={v.id}
                   initial={{ opacity: 0, x: 24 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 24 }}
-                  transition={{ ...spring, delay: 0.1 }}
+                  transition={{ ...spring, delay: 0.25 + i * 0.08 }}
+                  whileHover={{ scale: 1.02, x: -3 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => navigate(`/player/${v.id}`)}
                   style={{
-                    position: 'absolute', top: 20, right: 20,
-                    width: 240,
-                    zIndex: 25,
-                    display: 'flex', flexDirection: 'column', gap: 8,
+                    display: 'flex', gap: 0,
+                    background: 'rgba(14,14,14,0.88)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    border: '1px solid rgba(255,255,255,0.07)',
                   }}
                 >
-                  <p style={{
-                    fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
-                    textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)',
-                    marginBottom: 4,
-                  }}>
-                    Up Next
-                  </p>
+                  {/* Thumbnail */}
+                  <div style={{ width: 120, flexShrink: 0, position: 'relative', aspectRatio: '16/9', background: '#111' }}>
+                    {v.thumbnail
+                      ? <img src={v.thumbnail} alt={v.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 22 }}>▶</div>
+                    }
+                    <span style={{
+                      position: 'absolute', bottom: 4, right: 4,
+                      background: 'rgba(0,0,0,0.9)', color: '#fff',
+                      fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
+                    }}>{formatDuration(v.duration)}</span>
+                  </div>
 
-                  {related.slice(0, 4).map((v, i) => (
-                    <motion.div
-                      key={v.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 16 }}
-                      transition={{ ...spring, delay: 0.12 + i * 0.07 }}
-                      whileHover={{ scale: 1.03, x: -4 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => navigate(`/player/${v.id}`)}
-                      style={{
-                        display: 'flex', gap: 10,
-                        background: 'rgba(20,20,20,0.82)',
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
-                        borderRadius: 8,
-                        overflow: 'hidden',
-                        cursor: 'pointer',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                      }}
-                    >
-                      {/* Thumbnail */}
-                      <div style={{ width: 100, flexShrink: 0, position: 'relative', aspectRatio: '16/9', background: '#1a1a1a' }}>
-                        {v.thumbnail
-                          ? <img src={v.thumbnail} alt={v.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 20 }}>▶</div>
-                        }
-                        {/* Duration badge */}
-                        <span style={{
-                          position: 'absolute', bottom: 4, right: 4,
-                          background: 'rgba(0,0,0,0.85)', color: '#fff',
-                          fontSize: 9, fontWeight: 700, padding: '2px 4px', borderRadius: 3,
-                          letterSpacing: '0.02em',
-                        }}>{formatDuration(v.duration)}</span>
-                      </div>
-
-                      {/* Info */}
-                      <div style={{ flex: 1, minWidth: 0, padding: '8px 10px 8px 0', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <p style={{
-                          fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1.3, marginBottom: 3,
-                          overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                        }}>
-                          {i + 1}. {v.title}
-                        </p>
-                        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {v.channel}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0, padding: '8px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <p style={{
+                      fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1.35, marginBottom: 4,
+                      overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                    }}>
+                      {i + 1}. {v.title}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {v.channel}
+                    </p>
+                  </div>
                 </motion.div>
-              )}
-            </AnimatePresence>
+              ))}
+            </motion.div>
           )}
 
-          {/* ── Title overlay — bottom left ──────────────────────────── */}
+          {/* ── Title overlay — bottom left, always inside the video box ── */}
           <AnimatePresence>
             {showControls && (
               <motion.div
                 key="title-overlay"
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                transition={{ duration: 0.22 }}
                 style={{
-                  position: 'absolute', bottom: 88, left: 28,
-                  right: isMobile ? 28 : '45%',
+                  position: 'absolute', bottom: 90, left: 24,
+                  right: isMobile ? 24 : '40%',
                   zIndex: 20, pointerEvents: 'none',
                 }}
               >
