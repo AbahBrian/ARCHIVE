@@ -17,6 +17,7 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isMobile = window.innerWidth < 640;
 
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -64,30 +65,40 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
         background: 'rgba(0,0,0,0.72)',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '20px',
+        display: 'flex', alignItems: isMobile ? 'flex-end' : 'center',
+        justifyContent: 'center',
+        padding: isMobile ? '0' : '20px',
       }}
     >
       {/* Card */}
       <motion.div
-        initial={{ opacity: 0, y: 32, scale: 0.95 }}
+        initial={{ opacity: 0, y: isMobile ? 80 : 32, scale: isMobile ? 1 : 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.97 }}
+        exit={{ opacity: 0, y: isMobile ? 80 : 16, scale: isMobile ? 1 : 0.97 }}
         transition={spring}
         style={{
           background: 'var(--surface)',
-          borderRadius: 16,
-          padding: '32px 32px 28px',
+          borderRadius: isMobile ? '16px 16px 0 0' : 16,
+          padding: isMobile ? '24px 20px 32px' : '32px 32px 28px',
           width: '100%',
-          maxWidth: 480,
+          maxWidth: isMobile ? '100%' : 480,
           border: '1px solid rgba(255,255,255,0.07)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
         }}
       >
+        {/* Handle bar on mobile */}
+        {isMobile && (
+          <div style={{
+            width: 36, height: 4, borderRadius: 9999,
+            background: 'rgba(255,255,255,0.15)',
+            margin: '-8px auto 20px',
+          }} />
+        )}
+
         {/* Header row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <h2 style={{
-            fontFamily: 'var(--font)', fontSize: 20, fontWeight: 800,
+            fontFamily: 'var(--font)', fontSize: isMobile ? 18 : 20, fontWeight: 800,
             letterSpacing: '-0.03em', color: 'var(--text)',
           }}>
             Download Video
@@ -99,7 +110,7 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
             style={{
               background: 'rgba(255,255,255,0.08)',
               border: 'none', borderRadius: '50%',
-              width: 32, height: 32, fontSize: 18,
+              width: isMobile ? 36 : 32, height: isMobile ? 36 : 32, fontSize: 18,
               color: 'var(--text-muted)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
@@ -126,14 +137,14 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 required
-                autoFocus
+                autoFocus={!isMobile}
                 placeholder="https://youtube.com/watch?v=..."
                 style={{
                   width: '100%',
                   background: 'var(--surface-high)',
                   border: 'none',
                   borderRadius: 9999,
-                  padding: '11px 20px',
+                  padding: isMobile ? '13px 20px' : '11px 20px',
                   fontSize: 14,
                   color: 'var(--text)',
                   fontFamily: 'var(--font)',
@@ -166,7 +177,7 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
                   background: submitting ? 'var(--surface-high)' : 'var(--red)',
                   color: submitting ? 'var(--text-muted)' : '#fff',
                   border: 'none', borderRadius: 9999,
-                  padding: '12px 0',
+                  padding: isMobile ? '14px 0' : '12px 0',
                   fontSize: 14, fontWeight: 700,
                   fontFamily: 'var(--font)',
                   cursor: submitting ? 'not-allowed' : 'pointer',
@@ -250,7 +261,7 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
                 style={{
                   width: '100%', background: 'var(--surface-high)',
                   color: 'var(--text)', border: 'none', borderRadius: 9999,
-                  padding: '11px 0', fontSize: 14, fontWeight: 600,
+                  padding: isMobile ? '14px 0' : '11px 0', fontSize: 14, fontWeight: 600,
                   cursor: 'pointer', fontFamily: 'var(--font)',
                 }}
               >
@@ -306,7 +317,7 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
                   width: '100%',
                   background: 'var(--surface-high)',
                   border: 'none', borderRadius: 9999,
-                  padding: '11px 20px',
+                  padding: isMobile ? '13px 20px' : '11px 20px',
                   fontSize: 14, color: 'var(--text)',
                   fontFamily: 'var(--font)', outline: 'none',
                   marginBottom: 16, boxSizing: 'border-box',
@@ -323,7 +334,8 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
                   style={{
                     flex: 1, background: 'var(--red)', color: '#fff',
                     border: 'none', borderRadius: 9999,
-                    padding: '12px 0', fontSize: 14, fontWeight: 700,
+                    padding: isMobile ? '14px 0' : '12px 0',
+                    fontSize: 14, fontWeight: 700,
                     cursor: 'pointer', fontFamily: 'var(--font)',
                   }}
                 >
@@ -335,7 +347,8 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
                   style={{
                     background: 'var(--surface-high)', color: 'var(--text-muted)',
                     border: 'none', borderRadius: 9999,
-                    padding: '12px 18px', fontSize: 14, fontWeight: 600,
+                    padding: isMobile ? '14px 18px' : '12px 18px',
+                    fontSize: 14, fontWeight: 600,
                     cursor: 'pointer', fontFamily: 'var(--font)',
                   }}
                 >
