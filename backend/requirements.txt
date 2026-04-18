@@ -1,0 +1,7 @@
+fastapi==0.136.0
+uvicorn[standard]==0.34.0
+yt-dlp>=2024.4.9
+aiofiles==23.2.1
+python-multipart==0.0.20
+pytest==8.3.5
+httpx==0.28.1
