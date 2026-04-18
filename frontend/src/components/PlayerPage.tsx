@@ -178,7 +178,7 @@ export default function PlayerPage() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }}
-          style={{ position: 'relative', background: '#000', width: '100%', aspectRatio: '16/9' }}
+          style={{ position: 'relative', background: '#000', width: '100%', aspectRatio: '16/9', maxHeight: isMobile ? '56vw' : 'calc(100vh - 52px - 220px)', overflow: 'hidden' }}
           onMouseMove={resetTimer} onTouchStart={resetTimer}
         >
           <video
