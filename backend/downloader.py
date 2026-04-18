@@ -28,10 +28,8 @@ def run_download(job_id: str, url: str) -> None:
             output_path = d.get("filename")
 
     if _FFMPEG_AVAILABLE:
-        # Best quality: separate video+audio merged by ffmpeg (supports 2h+)
-        fmt = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
+        fmt = "bestvideo+bestaudio/best"
     else:
-        # No ffmpeg: must pick a pre-muxed single stream (video+audio combined)
         fmt = "best[ext=mp4]/best[ext=webm]/best"
 
     ydl_opts = {
