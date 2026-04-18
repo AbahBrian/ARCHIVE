@@ -28,9 +28,11 @@ def run_download(job_id: str, url: str) -> None:
             output_path = d.get("filename")
 
     if _FFMPEG_AVAILABLE:
-        fmt = "bestvideo+bestaudio/best"
+        fmt = "bestvideo[height<=1080]+bestaudio/bestvideo+bestaudio/best"
     else:
-        fmt = "best[ext=mp4]/best[ext=webm]/best"
+        fmt = "best[height<=1080][ext=mp4]/best[ext=mp4]/best[ext=webm]/best"
+
+    _cookies = os.environ.get("COOKIES_FILE") or (_DEFAULT_COOKIES if Path(_DEFAULT_COOKIES).exists() else None)
 
     ydl_opts = {
         "format": fmt,
@@ -39,10 +41,9 @@ def run_download(job_id: str, url: str) -> None:
         "progress_hooks": [_progress_hook],
         "quiet": True,
         "no_warnings": True,
-        "extractor_args": {"youtube": {"player_client": ["web"]}},
         "js_runtimes": {"node": {}},
         "remote_components": ["ejs:github"],
-        **({"cookiefile": os.environ.get("COOKIES_FILE") or (_DEFAULT_COOKIES if Path(_DEFAULT_COOKIES).exists() else None)} if (os.environ.get("COOKIES_FILE") or Path(_DEFAULT_COOKIES).exists()) else {}),
+        **({"cookiefile": _cookies} if _cookies else {}),
     }
 
     with db.write_lock:
