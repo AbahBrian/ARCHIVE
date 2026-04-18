@@ -1,8 +1,11 @@
 import os
 import shutil
+from pathlib import Path
 import yt_dlp
 import config
 import db
+
+_DEFAULT_COOKIES = str(Path(__file__).resolve().parent / "cookies.txt")
 
 _FFMPEG_AVAILABLE = shutil.which("ffmpeg") is not None
 
@@ -38,7 +41,7 @@ def run_download(job_id: str, url: str) -> None:
         "progress_hooks": [_progress_hook],
         "quiet": True,
         "no_warnings": True,
-        **({"cookiefile": os.environ["COOKIES_FILE"]} if os.environ.get("COOKIES_FILE") else {}),
+        **({"cookiefile": os.environ.get("COOKIES_FILE") or (_DEFAULT_COOKIES if Path(_DEFAULT_COOKIES).exists() else None)} if (os.environ.get("COOKIES_FILE") or Path(_DEFAULT_COOKIES).exists()) else {}),
     }
 
     with db.write_lock:
