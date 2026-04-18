@@ -1,4 +1,5 @@
 fastapi==0.136.0
+python-dotenv==1.0.1
 uvicorn[standard]==0.34.0
 yt-dlp>=2024.4.9
 aiofiles==23.2.1
