@@ -1,8 +1,9 @@
 import os
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from db import init_db
