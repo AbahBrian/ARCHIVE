@@ -66,12 +66,7 @@ export default function LibraryPage() {
         display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16,
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <span style={{
-          fontSize: isMobile ? 18 : 22, fontWeight: 900,
-          letterSpacing: '-0.04em', color: 'var(--red)', flexShrink: 0,
-        }}>
-          ARCH:IVE
-        </span>
+        <img src="/Logo.png" alt="ARCH:IVE" style={{ height: isMobile ? 24 : 28, width: 'auto', display: 'block', flexShrink: 0 }} />
 
         {/* Search */}
         <input

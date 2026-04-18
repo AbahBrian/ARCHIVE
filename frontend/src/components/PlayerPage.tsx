@@ -47,6 +47,8 @@ export default function PlayerPage() {
   const [saving, setSaving]             = useState(false);
   const [tagSaved, setTagSaved]         = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting]         = useState(false);
+  const [deleteError, setDeleteError]   = useState('');
   const [showInfo, setShowInfo]         = useState(false);
 
   useEffect(() => {
@@ -103,7 +105,16 @@ export default function PlayerPage() {
   }
   async function handleDelete() {
     if (!video) return;
-    await deleteVideo(video.id); navigate('/');
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteVideo(video.id);
+      navigate('/');
+    } catch {
+      setDeleteError('Failed to delete. Is the backend running?');
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
   }
 
   if (notFound) return (
@@ -146,9 +157,7 @@ export default function PlayerPage() {
             style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_back</span>
           </motion.button>
-          <span style={{ fontFamily: 'var(--font)', fontSize: 20, fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--red)' }}>
-            ARCH:IVE
-          </span>
+          <img src="/Logo.png" alt="ARCH:IVE" style={{ height: 28, width: 'auto', display: 'block' }} />
         </div>
 
         {!isMobile && (
@@ -178,7 +187,7 @@ export default function PlayerPage() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 }}
-          style={{ position: 'relative', background: '#000', width: '100%', aspectRatio: '16/9', maxHeight: isMobile ? '56vw' : 'calc(100vh - 52px - 220px)', overflow: 'hidden' }}
+          style={{ position: 'relative', background: '#000', width: '100%', height: isMobile ? '56vw' : 'calc(100vh - 52px)', overflow: 'hidden' }}
           onMouseMove={resetTimer} onTouchStart={resetTimer}
         >
           <video
@@ -198,23 +207,27 @@ export default function PlayerPage() {
           {/* Left gradient for title legibility */}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(0,0,0,0.65) 0%, transparent 50%)', pointerEvents: 'none' }} />
 
-          {/* ── UP NEXT overlay — always visible, top-right inside video ── */}
+          {/* ── UP NEXT — always-visible right panel ─────────────────── */}
           {!isMobile && related.length > 0 && (
             <motion.div
               initial={{ opacity: 0, x: 32 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ ...spring, delay: 0.2 }}
+              animate={{ opacity: 0.8, x: 2 }}
+              transition={{ ...spring, delay: 0.4 }}
               style={{
-                position: 'absolute', top: 16, right: 16,
-                width: 300,
-                zIndex: 25,
-                display: 'flex', flexDirection: 'column', gap: 6,
+                position: 'absolute', top: 0, right: 0, bottom: 0,
+                width: 200,
+                zIndex: 24,
+                display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                gap: 6,
+                padding: '8px 8px 8px 0',
+                background: 'transparent',
+                pointerEvents: 'none',
               }}
             >
               <p style={{
-                fontSize: 11, fontWeight: 700, letterSpacing: '0.16em',
-                textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)',
-                marginBottom: 6,
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+                textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)',
+                marginBottom: 4, paddingLeft: 28,
               }}>
                 Up Next
               </p>
@@ -222,46 +235,49 @@ export default function PlayerPage() {
               {related.slice(0, 4).map((v, i) => (
                 <motion.div
                   key={v.id}
-                  initial={{ opacity: 0, x: 24 }}
+                  initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ ...spring, delay: 0.25 + i * 0.08 }}
-                  whileHover={{ scale: 1.02, x: -3 }}
+                  transition={{ ...spring, delay: 0.25 + i * 0.07 }}
+                  whileHover={{ x: -3 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => navigate(`/player/${v.id}`)}
                   style={{
-                    display: 'flex', gap: 0,
-                    background: 'rgba(14,14,14,0.88)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    borderRadius: 6,
+                    position: 'relative',
+                    height: 100,
+                    marginLeft: 14,
+                    borderRadius: '18px 0 0 8px',
                     overflow: 'hidden',
                     cursor: 'pointer',
-                    border: '1px solid rgba(255,255,255,0.07)',
+                    flexShrink: 0,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRight: 'none',
+                    pointerEvents: 'auto',
                   }}
                 >
-                  {/* Thumbnail */}
-                  <div style={{ width: 120, flexShrink: 0, position: 'relative', aspectRatio: '16/9', background: '#111' }}>
-                    {v.thumbnail
-                      ? <img src={v.thumbnail} alt={v.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 22 }}>▶</div>
-                    }
-                    <span style={{
-                      position: 'absolute', bottom: 4, right: 4,
-                      background: 'rgba(0,0,0,0.9)', color: '#fff',
-                      fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 3,
-                    }}>{formatDuration(v.duration)}</span>
-                  </div>
+                  {/* Full thumbnail */}
+                  {v.thumbnail
+                    ? <img src={v.thumbnail} alt={v.title} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    : <div style={{ position: 'absolute', inset: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.2)', fontSize: 20 }}>▶</div>
+                  }
 
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0, padding: '8px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  {/* Gradient scrim for text legibility */}
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 55%, transparent 100%)', pointerEvents: 'none' }} />
+
+                  {/* Duration badge — top right */}
+                  <span style={{
+                    position: 'absolute', top: 4, right: 4,
+                    background: 'rgba(0,0,0,0.85)', color: '#fff',
+                    fontSize: 9, fontWeight: 700, padding: '2px 4px', borderRadius: 2,
+                    whiteSpace: 'nowrap',
+                  }}>{formatDuration(v.duration)}</span>
+
+                  {/* Title overlay — bottom */}
+                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 6px 5px' }}>
                     <p style={{
-                      fontSize: 12, fontWeight: 700, color: '#fff', lineHeight: 1.35, marginBottom: 4,
+                      fontSize: 10, fontWeight: 700, color: '#fff', lineHeight: 1.3,
                       overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                     }}>
                       {i + 1}. {v.title}
-                    </p>
-                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {v.channel}
                     </p>
                   </div>
                 </motion.div>
@@ -520,11 +536,14 @@ export default function PlayerPage() {
           </div>
 
           {/* Delete */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+            {deleteError && (
+              <p style={{ fontSize: 12, color: 'var(--red)', fontWeight: 600 }}>{deleteError}</p>
+            )}
             <AnimatePresence mode="wait">
               {!confirmDelete ? (
                 <motion.button key="del" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  whileTap={{ scale: 0.95 }} onClick={() => setConfirmDelete(true)}
+                  whileTap={{ scale: 0.95 }} onClick={() => { setDeleteError(''); setConfirmDelete(true); }}
                   style={{ background: 'none', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9999, padding: '7px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   Delete Video
                 </motion.button>
@@ -532,11 +551,11 @@ export default function PlayerPage() {
                 <motion.div key="confirm" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Delete permanently?</span>
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={handleDelete}
-                    style={{ background: 'var(--red)', color: '#fff', border: 'none', borderRadius: 9999, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                    Yes, delete
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={handleDelete} disabled={deleting}
+                    style={{ background: 'var(--red)', color: '#fff', border: 'none', borderRadius: 9999, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.6 : 1 }}>
+                    {deleting ? 'Deleting...' : 'Yes, delete'}
                   </motion.button>
-                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => setConfirmDelete(false)}
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={() => setConfirmDelete(false)} disabled={deleting}
                     style={{ background: 'var(--surface-high)', color: 'var(--text)', border: 'none', borderRadius: 9999, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                     Cancel
                   </motion.button>

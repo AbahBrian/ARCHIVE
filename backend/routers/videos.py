@@ -117,10 +117,14 @@ def delete_video(video_id: int):
     with db.write_lock:
         conn = db.get_db()
         try:
+            conn.execute("DELETE FROM download_jobs WHERE video_id=?", (video_id,))
             conn.execute("DELETE FROM videos WHERE id=?", (video_id,))
             conn.commit()
         finally:
             conn.close()
 
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except OSError:
+        pass
