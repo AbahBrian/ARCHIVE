@@ -8,3 +8,6 @@ frontend/dist/
 .env
 cookies.txt
 **/cookies.txt
+.claude/
+.superpowers/
+docs/superpowers/
