@@ -39,6 +39,9 @@ def run_download(job_id: str, url: str) -> None:
         "progress_hooks": [_progress_hook],
         "quiet": True,
         "no_warnings": True,
+        "extractor_args": {"youtube": {"player_client": ["web"]}},
+        "js_runtimes": {"node": {}},
+        "remote_components": ["ejs:github"],
         **({"cookiefile": os.environ.get("COOKIES_FILE") or (_DEFAULT_COOKIES if Path(_DEFAULT_COOKIES).exists() else None)} if (os.environ.get("COOKIES_FILE") or Path(_DEFAULT_COOKIES).exists()) else {}),
     }
 
