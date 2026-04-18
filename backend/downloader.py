@@ -38,6 +38,7 @@ def run_download(job_id: str, url: str) -> None:
         "progress_hooks": [_progress_hook],
         "quiet": True,
         "no_warnings": True,
+        **({"cookiefile": os.environ["COOKIES_FILE"]} if os.environ.get("COOKIES_FILE") else {}),
     }
 
     with db.write_lock:

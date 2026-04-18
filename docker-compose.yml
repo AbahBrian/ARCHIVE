@@ -5,9 +5,11 @@ services:
     volumes:
       - videos:/videos
       - db:/data
+      - ${COOKIES_FILE:-/dev/null}:/data/cookies.txt:ro
     environment:
       - DB_PATH=/data/library.db
       - VIDEOS_DIR=/videos
+      - COOKIES_FILE=/data/cookies.txt
 
   nginx:
     image: nginx:alpine
