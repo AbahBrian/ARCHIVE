@@ -5,11 +5,13 @@ services:
     volumes:
       - videos:/videos
       - db:/data
-      - ${COOKIES_FILE:-/dev/null}:/data/cookies.txt:ro
+      # Uncomment to enable YouTube cookies (export from browser as cookies.txt):
+      # - ./backend/cookies.txt:/app/cookies.txt:ro
     environment:
       - DB_PATH=/data/library.db
       - VIDEOS_DIR=/videos
-      - COOKIES_FILE=/data/cookies.txt
+      # Uncomment if cookies.txt is mounted above:
+      # - COOKIES_FILE=/app/cookies.txt
 
   nginx:
     image: nginx:alpine
