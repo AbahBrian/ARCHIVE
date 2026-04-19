@@ -28,9 +28,9 @@ def run_download(job_id: str, url: str) -> None:
             output_path = d.get("filename")
 
     if _FFMPEG_AVAILABLE:
-        fmt = "bestvideo[height<=1080]+bestaudio/bestvideo+bestaudio/best"
+        fmt = "bestvideo[height<=1080][protocol!=m3u8][protocol!=m3u8_native]+bestaudio[protocol!=m3u8][protocol!=m3u8_native]/bestvideo[height<=1080]+bestaudio/best"
     else:
-        fmt = "best[height<=1080][ext=mp4]/best[ext=mp4]/best[ext=webm]/best"
+        fmt = "best[height<=1080][ext=mp4][protocol!=m3u8][protocol!=m3u8_native]/best[ext=mp4]/best[ext=webm]/best"
 
     _cookies = os.environ.get("COOKIES_FILE") or (_DEFAULT_COOKIES if Path(_DEFAULT_COOKIES).exists() else None)
 
