@@ -42,7 +42,6 @@ def run_download(job_id: str, url: str) -> None:
         "quiet": True,
         "no_warnings": True,
         "js_runtimes": {"node": {}},
-        "remote_components": ["ejs:github"],
         **({"cookiefile": _cookies} if _cookies else {}),
     }
 

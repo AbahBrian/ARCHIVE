@@ -23,70 +23,91 @@ function formatDuration(seconds: number) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-function HeroSection({ video, onPlay }: { video: Video; onPlay: () => void }) {
+function HeroSection({ videos, onPlay }: { videos: Video[]; onPlay: (v: Video) => void }) {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const slides = videos.slice(0, 5);
+  const video = slides[index];
+
+  const go = useCallback((next: number) => {
+    setIndex(((next % slides.length) + slides.length) % slides.length);
+  }, [slides.length]);
+
+  useEffect(() => {
+    if (paused || slides.length <= 1) return;
+    timerRef.current = setInterval(() => go(index + 1), 6000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [index, paused, go, slides.length]);
+
+  if (!video) return null;
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: 'min(56vw, 600px)', minHeight: 280, overflow: 'hidden' }}>
-      {/* Background image */}
-      {video.thumbnail ? (
-        <img
-          src={video.thumbnail}
-          alt={video.title}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      ) : (
-        <div style={{ position: 'absolute', inset: 0, background: '#1a1a1a' }} />
-      )}
+    <div
+      style={{ position: 'relative', width: '100%', height: 'min(56vw, 600px)', minHeight: 280, overflow: 'hidden' }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {/* Background slides */}
+      <AnimatePresence mode="sync">
+        <motion.div
+          key={video.id}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.7 }}
+          style={{ position: 'absolute', inset: 0 }}
+        >
+          {video.thumbnail ? (
+            <img
+              src={video.thumbnail}
+              alt={video.title}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <div style={{ position: 'absolute', inset: 0, background: '#1a1a1a' }} />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Gradients */}
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 60%, transparent 100%)' }} />
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--bg) 0%, transparent 40%)' }} />
 
       {/* Content */}
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0,
-        padding: 'clamp(20px, 4vw, 60px)',
-        maxWidth: 600,
-      }}>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={video.id}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 10 }}
-        >
-          Featured
-        </motion.p>
-        <motion.h1
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.45 }}
           style={{
+            position: 'absolute', bottom: 0, left: 0,
+            padding: 'clamp(20px, 4vw, 60px)',
+            maxWidth: 600,
+          }}
+        >
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--red)', marginBottom: 10 }}>
+            Featured
+          </p>
+          <h1 style={{
             fontSize: 'clamp(20px, 3.5vw, 48px)', fontWeight: 800,
             lineHeight: 1.15, marginBottom: 12,
             textShadow: '0 2px 12px rgba(0,0,0,0.6)',
-          }}
-        >
-          {video.title}
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 20 }}
-        >
-          {video.channel} {video.duration > 0 && `· ${formatDuration(video.duration)}`}
-        </motion.p>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          style={{ display: 'flex', gap: 12 }}
-        >
+          }}>
+            {video.title}
+          </h1>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 20 }}>
+            {video.channel} {video.duration > 0 && `· ${formatDuration(video.duration)}`}
+          </p>
           <motion.button
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.97 }}
-            onClick={onPlay}
+            onClick={() => onPlay(video)}
             style={{
-              display: 'flex', alignItems: 'center', gap: 8,
+              display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'white', color: 'black',
               border: 'none', borderRadius: 6,
               padding: '10px 24px', fontSize: 15, fontWeight: 700,
@@ -96,7 +117,53 @@ function HeroSection({ video, onPlay }: { video: Video; onPlay: () => void }) {
             ▶ Play
           </motion.button>
         </motion.div>
-      </div>
+      </AnimatePresence>
+
+      {/* Prev / Next arrows */}
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={() => go(index - 1)}
+            style={{
+              position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+              zIndex: 10, background: 'rgba(0,0,0,0.5)', border: 'none',
+              color: 'white', width: 38, height: 38, borderRadius: '50%',
+              cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >‹</button>
+          <button
+            onClick={() => go(index + 1)}
+            style={{
+              position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+              zIndex: 10, background: 'rgba(0,0,0,0.5)', border: 'none',
+              color: 'white', width: 38, height: 38, borderRadius: '50%',
+              cursor: 'pointer', fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >›</button>
+        </>
+      )}
+
+      {/* Dot indicators */}
+      {slides.length > 1 && (
+        <div style={{
+          position: 'absolute', bottom: 14, right: 20,
+          display: 'flex', gap: 6, zIndex: 10,
+        }}>
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => go(i)}
+              style={{
+                width: i === index ? 20 : 6,
+                height: 6, borderRadius: 3,
+                background: i === index ? 'var(--red)' : 'rgba(255,255,255,0.4)',
+                border: 'none', cursor: 'pointer', padding: 0,
+                transition: 'width 0.3s, background 0.3s',
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -260,7 +327,6 @@ export default function LibraryPage() {
   }
 
   const isFiltering = !!(searchQuery || activeTag);
-  const heroVideo = allVideos[0];
 
   // Group videos by tag for carousels
   const tagGroups: { label: string; videos: Video[] }[] = tags.map(tag => ({
@@ -330,8 +396,8 @@ export default function LibraryPage() {
       </AnimatePresence>
 
       {/* ── Hero ────────────────────────────────────────────────────── */}
-      {!isFiltering && heroVideo && (
-        <HeroSection video={heroVideo} onPlay={() => navigate(`/player/${heroVideo.id}`)} />
+      {!isFiltering && allVideos.length > 0 && (
+        <HeroSection videos={allVideos} onPlay={v => navigate(`/player/${v.id}`)} />
       )}
 
       {/* ── Filtered search results ─────────────────────────────────── */}
