@@ -12,13 +12,23 @@ _FFMPEG_AVAILABLE = shutil.which("ffmpeg") is not None
 
 def run_download(job_id: str, url: str) -> None:
     output_path: str | None = None
+    # Track two-pass download (video + audio) as halves of 0–100
+    _file_index = [0]  # which file are we on (0=first, 1=second)
+    _last_filename = [None]
 
     def _progress_hook(d: dict) -> None:
         nonlocal output_path
         if d["status"] == "downloading":
+            filename = d.get("filename")
+            if filename != _last_filename[0]:
+                _last_filename[0] = filename
+                _file_index[0] = min(_file_index[0] + (1 if _last_filename[0] else 0), 1)
+
             total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
             downloaded = d.get("downloaded_bytes", 0)
-            progress = int(downloaded / total * 100) if total else 0
+            file_pct = (downloaded / total * 100) if total else 0
+            # Each file contributes half of the total progress bar
+            progress = min(int(_file_index[0] * 50 + file_pct / 2), 99)
             with db.write_lock:
                 conn = db.get_db()
                 conn.execute("UPDATE download_jobs SET progress=? WHERE id=?", (progress, job_id))
