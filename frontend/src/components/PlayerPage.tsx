@@ -162,14 +162,23 @@ export default function PlayerPage() {
 
         {!isMobile && (
           <nav style={{ display: 'flex', gap: 32 }}>
-            {['LIBRARY', 'SEARCH', 'PROFILE'].map(label => (
-              <a key={label} href="/"
-                style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', transition: 'color 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
-                {label}
-              </a>
-            ))}
+            <a href="/"
+              style={{ color: 'var(--text-muted)', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', transition: 'color 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+              LIBRARY
+            </a>
+            <button
+              onClick={() => navigate(`/edit/${video?.id}`)}
+              style={{
+                color: 'var(--red)', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '0.75')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
+              EDIT
+            </button>
           </nav>
         )}
 
@@ -534,6 +543,22 @@ export default function PlayerPage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Edit Video */}
+          <motion.button
+            whileHover={{ opacity: 0.85 }} whileTap={{ scale: 0.96 }}
+            onClick={() => navigate(`/edit/${video.id}`)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'rgba(229,9,20,0.1)', color: 'var(--red)',
+              border: '1px solid rgba(229,9,20,0.3)', borderRadius: 10,
+              padding: '12px 20px', fontSize: 13, fontWeight: 700,
+              cursor: 'pointer', marginBottom: 14, width: '100%', justifyContent: 'center',
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
+            Edit Video (Translate · Subtitles)
+          </motion.button>
 
           {/* Delete */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>

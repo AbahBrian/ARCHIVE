@@ -18,3 +18,14 @@ export interface DownloadJob {
   error?: string;
   video_id?: number;
 }
+
+export interface TranslationJob {
+  id: string;
+  video_id: number;
+  status: 'pending' | 'transcribing' | 'translating' | 'synthesizing' | 'merging' | 'done' | 'failed';
+  stage: string | null;
+  progress: number;
+  error: string | null;
+  output_path: string | null;
+  created_at: string;
+}
