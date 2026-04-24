@@ -1,4 +1,4 @@
-import type { Video, DownloadJob } from './types';
+import type { Video, DownloadJob, TranslationJob } from './types';
 
 const BASE = '/api';
 
@@ -64,6 +64,22 @@ export function formatDuration(seconds: number): string {
   const s = seconds % 60;
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+export async function startTranslation(videoId: number): Promise<{ job_id: string }> {
+  const res = await fetch(`${BASE}/translate/${videoId}`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to start translation');
+  return res.json();
+}
+
+export async function getTranslationStatus(jobId: string): Promise<TranslationJob> {
+  const res = await fetch(`${BASE}/translate/${jobId}/status`);
+  if (!res.ok) throw new Error('Failed to get translation status');
+  return res.json();
+}
+
+export function translationDownloadUrl(jobId: string): string {
+  return `${BASE}/translate/${jobId}/download`;
 }
 
 export function formatFileSize(bytes: number): string {

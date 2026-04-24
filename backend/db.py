@@ -45,6 +45,16 @@ def init_db() -> None:
                 video_id   INTEGER REFERENCES videos(id),
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS translation_jobs (
+                id          TEXT PRIMARY KEY,
+                video_id    INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+                status      TEXT NOT NULL DEFAULT 'pending',
+                stage       TEXT,
+                progress    INTEGER DEFAULT 0,
+                error       TEXT,
+                output_path TEXT,
+                created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
         """)
         conn.commit()
         conn.close()

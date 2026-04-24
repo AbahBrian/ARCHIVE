@@ -7,7 +7,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from db import init_db
-from routers import videos, tags, download, stream
+from routers import videos, tags, download, stream, translate
 
 
 @asynccontextmanager
@@ -22,6 +22,7 @@ app.include_router(videos.router)
 app.include_router(tags.router)
 app.include_router(download.router)
 app.include_router(stream.router)
+app.include_router(translate.router)
 
 _frontend_dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
 if not os.path.exists(_frontend_dist):

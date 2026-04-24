@@ -168,7 +168,7 @@ function HeroSection({ videos, onPlay }: { videos: Video[]; onPlay: (v: Video) =
   );
 }
 
-function VideoCard({ video, onClick }: { video: Video; onClick: () => void }) {
+function VideoCard({ video, onClick, onEdit }: { video: Video; onClick: () => void; onEdit: () => void }) {
   const [hovered, setHovered] = useState(false);
   return (
     <motion.div
@@ -205,6 +205,23 @@ function VideoCard({ video, onClick }: { video: Video; onClick: () => void }) {
               padding: '10px 10px 12px',
             }}
           >
+            {/* Edit button — top right */}
+            <button
+              onClick={e => { e.stopPropagation(); onEdit(); }}
+              style={{
+                position: 'absolute', top: 6, right: 6,
+                background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 6, padding: '4px 6px',
+                color: '#fff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 3,
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
+              }}
+              title="Edit video"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>edit</span>
+              Edit
+            </button>
+
             <p style={{
               fontSize: 12, fontWeight: 700, color: 'white',
               lineHeight: 1.3, marginBottom: 4,
@@ -223,7 +240,7 @@ function VideoCard({ video, onClick }: { video: Video; onClick: () => void }) {
   );
 }
 
-function Carousel({ title, videos, onSelect }: { title: string; videos: Video[]; onSelect: (v: Video) => void }) {
+function Carousel({ title, videos, onSelect, onEdit }: { title: string; videos: Video[]; onSelect: (v: Video) => void; onEdit: (v: Video) => void }) {
   const rowRef = useRef<HTMLDivElement>(null);
 
   function scroll(dir: 'left' | 'right') {
@@ -260,7 +277,7 @@ function Carousel({ title, videos, onSelect }: { title: string; videos: Video[];
           }}
         >
           {videos.map(v => (
-            <VideoCard key={v.id} video={v} onClick={() => onSelect(v)} />
+            <VideoCard key={v.id} video={v} onClick={() => onSelect(v)} onEdit={() => onEdit(v)} />
           ))}
         </div>
 
@@ -438,7 +455,7 @@ export default function LibraryPage() {
                 style={{ aspectRatio: '16/9', borderRadius: 6, overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
                 onClick={() => navigate(`/player/${v.id}`)}
               >
-                <VideoCard video={v} onClick={() => navigate(`/player/${v.id}`)} />
+                <VideoCard video={v} onClick={() => navigate(`/player/${v.id}`)} onEdit={() => navigate(`/edit/${v.id}`)} />
               </motion.div>
             ))}
           </div>
@@ -459,10 +476,10 @@ export default function LibraryPage() {
             ))}
           </div>
 
-          <Carousel title="All Videos" videos={allVideos} onSelect={v => navigate(`/player/${v.id}`)} />
+          <Carousel title="All Videos" videos={allVideos} onSelect={v => navigate(`/player/${v.id}`)} onEdit={v => navigate(`/edit/${v.id}`)} />
 
           {tagGroups.map(g => (
-            <Carousel key={g.label} title={g.label} videos={g.videos} onSelect={v => navigate(`/player/${v.id}`)} />
+            <Carousel key={g.label} title={g.label} videos={g.videos} onSelect={v => navigate(`/player/${v.id}`)} onEdit={v => navigate(`/edit/${v.id}`)} />
           ))}
         </div>
       )}
