@@ -341,31 +341,34 @@ export default function LibraryPage() {
       <header style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
         background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)',
-        padding: isMobile ? '12px 16px' : '14px 24px',
-        display: 'flex', alignItems: 'center', gap: isMobile ? 10 : 16,
+        padding: 'clamp(8px, 2vw, 14px) clamp(10px, 3vw, 24px)',
+        display: 'flex', flexDirection: 'row', alignItems: 'center',
+        gap: 'clamp(6px, 2vw, 16px)',
         transition: 'background 0.3s',
       }}>
-        <img src="/Logo.png" alt="ARCH:IVE" style={{ height: isMobile ? 24 : 28, width: 'auto', display: 'block', flexShrink: 0 }} />
+        <img
+          src="/Logo.png"
+          alt="ARCH:IVE"
+          style={{ height: 'clamp(18px, 5vw, 28px)', width: 'auto', display: 'block', flexShrink: 0 }}
+        />
 
         <input
           type="search"
           value={searchQuery}
           onChange={e => { setSearchQuery(e.target.value); setActiveTag(null); }}
-          placeholder={isMobile ? 'Search...' : 'Search videos...'}
+          placeholder="Search videos..."
           style={{
-            flex: 1, maxWidth: isMobile ? '100%' : 420,
+            flex: 1, minWidth: 0,
             background: 'rgba(255,255,255,0.07)',
             border: 'none', borderRadius: 9999,
-            padding: isMobile ? '8px 14px' : '9px 18px',
-            fontSize: 14, color: 'var(--text)',
+            padding: 'clamp(6px, 1.8vw, 9px) clamp(10px, 3vw, 18px)',
+            fontSize: 'clamp(11px, 3vw, 14px)', color: 'var(--text)',
             fontFamily: 'var(--font)', outline: 'none',
             transition: 'box-shadow 0.15s',
           }}
           onFocus={e => (e.target.style.boxShadow = '0 0 0 2px rgba(229,9,20,0.35)')}
           onBlur={e => (e.target.style.boxShadow = 'none')}
         />
-
-        {!isMobile && <div style={{ flex: 1 }} />}
 
         <motion.button
           whileHover={{ opacity: 0.85 }}
@@ -374,10 +377,10 @@ export default function LibraryPage() {
           style={{
             color: 'var(--red)', border: '1px solid rgba(229,9,20,0.35)',
             borderRadius: 9999,
-            padding: isMobile ? '7px 14px' : '8px 20px',
-            fontSize: isMobile ? 11 : 12, fontWeight: 700, letterSpacing: '0.1em',
+            padding: 'clamp(6px, 1.8vw, 8px) clamp(10px, 3vw, 20px)',
+            fontSize: 'clamp(10px, 2.5vw, 12px)', fontWeight: 700, letterSpacing: '0.08em',
             textTransform: 'uppercase', background: 'none', cursor: 'pointer',
-            fontFamily: 'var(--font)', flexShrink: 0,
+            fontFamily: 'var(--font)', flexShrink: 0, whiteSpace: 'nowrap',
           }}
         >
           {isMobile ? '+ DL' : '+ Download'}
@@ -402,7 +405,7 @@ export default function LibraryPage() {
 
       {/* ── Filtered search results ─────────────────────────────────── */}
       {isFiltering && (
-        <div style={{ paddingTop: 80 }}>
+        <div style={{ paddingTop: isMobile ? 72 : 80 }}>
           {/* Tag chips */}
           <div style={{
             display: 'flex', gap: 8, flexWrap: 'wrap',
@@ -447,7 +450,7 @@ export default function LibraryPage() {
 
       {/* ── Carousels ───────────────────────────────────────────────── */}
       {!isFiltering && !loading && allVideos.length > 0 && (
-        <div style={{ paddingTop: 24 }}>
+        <div style={{ paddingTop: isMobile ? 60 : 24 }}>
           {/* Tag chips row */}
           <div style={{
             display: 'flex', gap: 8, flexWrap: 'wrap',
@@ -472,7 +475,7 @@ export default function LibraryPage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ textAlign: 'center', marginTop: 160, color: 'var(--text-muted)' }}
+          style={{ textAlign: 'center', marginTop: isMobile ? 200 : 160, color: 'var(--text-muted)' }}
         >
           <p style={{ fontSize: 52, marginBottom: 16 }}>📭</p>
           <p style={{ fontSize: 17, fontWeight: 600 }}>No videos yet.</p>

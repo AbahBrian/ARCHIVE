@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { getVideo, listVideos, updateVideoTags, deleteVideo, streamUrl, formatDuration, formatFileSize } from '../api';
-import type { Video } from '../types';
+import { getVideo, listVideos, updateVideoTags, deleteVideo, streamUrl, subtitlesUrl, startTranslate, getTranslateStatus, formatDuration, formatFileSize } from '../api';
+import type { Video, TranslateJob } from '../types';
 
 const spring = { type: 'spring', stiffness: 340, damping: 28 } as const;
 
@@ -50,13 +50,44 @@ export default function PlayerPage() {
   const [deleting, setDeleting]         = useState(false);
   const [deleteError, setDeleteError]   = useState('');
   const [showInfo, setShowInfo]         = useState(false);
+  const [pwaTipDismissed, setPwaTipDismissed] = useState(false);
+  const [audioMode, setAudioMode] = useState(false);
+
+  const [subtitlesReady, setSubtitlesReady] = useState(false);
+  const [showSubtitles, setShowSubtitles]   = useState(true);
+  const [translateJobId, setTranslateJobId] = useState<string | null>(null);
+  const [translateJob, setTranslateJob]     = useState<TranslateJob | null>(null);
+  const translatePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     getVideo(videoId)
       .then(v => { setVideo(v); setTagInput(v.tags.join(', ')); })
       .catch(() => setNotFound(true));
     listVideos().then(all => setRelated(all.filter(v => v.id !== videoId)));
+    // Check if subtitles already exist for this video
+    fetch(`/api/videos/${videoId}/subtitles.vtt`, { method: 'HEAD' })
+      .then(res => setSubtitlesReady(res.ok))
+      .catch(() => setSubtitlesReady(false));
   }, [videoId]);
+
+  useEffect(() => {
+    if (!translateJobId) return;
+    translatePollRef.current = setInterval(async () => {
+      try {
+        const status = await getTranslateStatus(translateJobId);
+        setTranslateJob(status);
+        if (status.status === 'done') {
+          clearInterval(translatePollRef.current!);
+          setSubtitlesReady(true);
+          setTranslateJobId(null);
+        } else if (status.status === 'failed') {
+          clearInterval(translatePollRef.current!);
+          setTranslateJobId(null);
+        }
+      } catch { /* ignore poll errors */ }
+    }, 3000);
+    return () => { if (translatePollRef.current) clearInterval(translatePollRef.current); };
+  }, [translateJobId]);
 
   const resetTimer = useCallback(() => {
     setShowControls(true);
@@ -69,18 +100,80 @@ export default function PlayerPage() {
     return () => { if (controlsTimer.current) clearTimeout(controlsTimer.current); };
   }, [resetTimer]);
 
-  function handlePlayPause() {
+  const handleSkip = useCallback((delta: number) => {
     const v = videoRef.current; if (!v) return;
-    if (v.paused) { v.play(); setPlaying(true); }
-    else          { v.pause(); setPlaying(false); }
+    v.currentTime = Math.max(0, Math.min(v.duration || 0, v.currentTime + delta));
+  }, []);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !video) return;
+
+    const updateMediaSession = () => {
+      if (!('mediaSession' in navigator)) return;
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: video.title,
+        artist: video.channel || 'ARCHIVE',
+        album: 'ARCHIVE',
+        artwork: video.thumbnail ? [
+          { src: video.thumbnail, sizes: '512x512', type: 'image/jpeg' }
+        ] : undefined,
+      });
+
+      navigator.mediaSession.setActionHandler('play', async () => {
+        await el.play();
+        setPlaying(true);
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        el.pause();
+        setPlaying(false);
+      });
+      navigator.mediaSession.setActionHandler('seekbackward', () => handleSkip(-10));
+      navigator.mediaSession.setActionHandler('seekforward', () => handleSkip(10));
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (typeof details.seekTime === 'number') {
+          el.currentTime = details.seekTime;
+          setCurrentTime(details.seekTime);
+        }
+      });
+    };
+
+    updateMediaSession();
+  }, [video, handleSkip]);
+
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+    const durationSafe = Number.isFinite(duration) ? duration : 0;
+    if ('setPositionState' in navigator.mediaSession && durationSafe > 0) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: durationSafe,
+          playbackRate: 1,
+          position: Math.min(currentTime, durationSafe),
+        });
+      } catch {}
+    }
+  }, [playing, currentTime, duration]);
+
+  async function handlePlayPause() {
+    const v = videoRef.current; if (!v) return;
+    try {
+      if (v.paused) {
+        await v.play();
+        setPlaying(true);
+      } else {
+        v.pause();
+        setPlaying(false);
+      }
+    } catch (err) {
+      console.error('Playback toggle failed', err);
+      setPlaying(!v.paused);
+    }
   }
   function handleSeek(e: React.ChangeEvent<HTMLInputElement>) {
     const v = videoRef.current; if (!v) return;
     const t = Number(e.target.value); v.currentTime = t; setCurrentTime(t);
-  }
-  function handleSkip(delta: number) {
-    const v = videoRef.current; if (!v) return;
-    v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + delta));
   }
   function handleVolume(e: React.ChangeEvent<HTMLInputElement>) {
     const v = videoRef.current; const val = Number(e.target.value);
@@ -103,6 +196,31 @@ export default function PlayerPage() {
       setTagSaved(true); setTimeout(() => setTagSaved(false), 2000);
     } finally { setSaving(false); }
   }
+  async function handleTranslate() {
+    try {
+      const res = await startTranslate(videoId);
+      if (res.status === 'done') {
+        setSubtitlesReady(true);
+        return;
+      }
+      if (res.job_id) {
+        setTranslateJob({ id: res.job_id, video_id: videoId, status: res.status as TranslateJob['status'], progress: res.progress ?? 0 });
+        setTranslateJobId(res.job_id);
+      }
+    } catch { /* show nothing on error */ }
+  }
+
+  function toggleSubtitles() {
+    const v = videoRef.current;
+    if (!v) return;
+    const next = !showSubtitles;
+    setShowSubtitles(next);
+    const tracks = v.textTracks;
+    for (let i = 0; i < tracks.length; i++) {
+      tracks[i].mode = next ? 'showing' : 'hidden';
+    }
+  }
+
   async function handleDelete() {
     if (!video) return;
     setDeleting(true);
@@ -183,6 +301,13 @@ export default function PlayerPage() {
         </a>
       </header>
 
+      {!pwaTipDismissed && isMobile && (
+        <div style={{ padding: '10px 14px', background: 'rgba(229,9,20,0.08)', borderBottom: '1px solid rgba(255,255,255,0.06)', color: 'var(--text-muted)', fontSize: 12, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>Install ARCHIVE ke Home Screen. Jika play bermasalah di HP, aktifkan Audio Mode lalu pakai kontrol native player. Background playback tetap tergantung browser/OS.</span>
+          <button onClick={() => setPwaTipDismissed(true)} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: 12 }}>Tutup</button>
+        </div>
+      )}
+
       {/* ── Full-width player with overlaid Up Next ─────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <motion.div
@@ -193,14 +318,52 @@ export default function PlayerPage() {
           <video
             ref={videoRef}
             src={src}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
+            poster={video.thumbnail || undefined}
+            style={audioMode ? { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', objectFit: 'cover', opacity: 0.18, filter: 'blur(10px) saturate(0.7)' } : { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
             onTimeUpdate={() => { const v = videoRef.current; if (v) setCurrentTime(v.currentTime); }}
             onLoadedMetadata={() => { const v = videoRef.current; if (v) setDuration(v.duration); }}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
-            onClick={handlePlayPause}
+            onEnded={() => setPlaying(false)}
             playsInline
-          />
+            controls={audioMode && isMobile}
+            preload="metadata"
+          >
+            {subtitlesReady && (
+              <track
+                key={video.id}
+                kind="subtitles"
+                src={subtitlesUrl(video.id)}
+                srcLang="id"
+                label="Indonesia"
+                default={showSubtitles}
+              />
+            )}
+          </video>
+
+          {/* Tap/click overlay — more reliable than onClick on <video> (iOS Safari drops it) */}
+          {!(audioMode && isMobile) && (
+            <div
+              style={{ position: 'absolute', inset: 0, zIndex: 19, cursor: 'pointer' }}
+              onClick={(e) => { e.stopPropagation(); void handlePlayPause(); }}
+              onTouchEnd={(e) => {
+                e.preventDefault(); // block the subsequent click so we don't double-fire
+                if (showControls) void handlePlayPause();
+                // when controls are hidden, parent onTouchStart already showed them; don't play yet
+              }}
+            />
+          )}
+
+          {audioMode && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', pointerEvents: 'none', padding: 24, textAlign: 'center' }}>
+              {video.thumbnail ? <img src={video.thumbnail} alt={video.title} style={{ width: isMobile ? 140 : 180, height: isMobile ? 140 : 180, objectFit: 'cover', borderRadius: 16, boxShadow: '0 18px 50px rgba(0,0,0,0.45)', marginBottom: 18 }} /> : null}
+              <div style={{ maxWidth: 520 }}>
+                <p style={{ fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Audio Mode</p>
+                <h2 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 800, lineHeight: 1.15, marginBottom: 8 }}>{video.title}</h2>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.72)' }}>{video.channel || 'ARCHIVE'} • Cocok untuk dengar saat layar mati jika browser/OS mengizinkan.</p>
+              </div>
+            </div>
+          )}
 
           {/* Bottom gradient */}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.35) 35%, transparent 60%)', pointerEvents: 'none' }} />
@@ -335,7 +498,7 @@ export default function PlayerPage() {
                   <span className="material-symbols-outlined" style={{ fontSize: isMobile ? 32 : 40 }}>replay_10</span>
                 </motion.button>
 
-                <motion.button whileTap={{ scale: 0.88 }} onClick={e => { e.stopPropagation(); handlePlayPause(); }}
+                <motion.button whileTap={{ scale: 0.88 }} onClick={e => { e.stopPropagation(); void handlePlayPause(); }}
                   style={{
                     width: isMobile ? 60 : 80, height: isMobile ? 60 : 80, borderRadius: '50%',
                     border: '2px solid rgba(255,255,255,0.9)',
@@ -412,10 +575,72 @@ export default function PlayerPage() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 12 : 18 }}>
-                    {!isMobile && (
-                      <motion.button whileHover={{ opacity: 0.7 }}
-                        style={{ color: '#fff', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 22 }}>subtitles</span>
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={() => setAudioMode(v => !v)}
+                      style={{
+                        color: '#fff',
+                        background: audioMode ? 'rgba(229,9,20,0.95)' : 'rgba(255,255,255,0.12)',
+                        border: audioMode ? '1px solid rgba(229,9,20,1)' : '1px solid rgba(255,255,255,0.16)',
+                        borderRadius: 9999,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: isMobile ? '8px 12px' : '8px 14px',
+                        fontWeight: 800,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase'
+                      }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: isMobile ? 20 : 22 }}>headphones</span>
+                      <span style={{ fontSize: isMobile ? 11 : 12 }}>{audioMode ? 'Audio ON' : 'Audio OFF'}</span>
+                    </motion.button>
+
+                    {/* Translate / CC button */}
+                    {!subtitlesReady && (!translateJob || translateJob.status === 'failed') && (
+                      <motion.button whileTap={{ scale: 0.9 }} onClick={handleTranslate}
+                        style={{
+                          color: translateJob?.status === 'failed' ? 'rgba(229,9,20,1)' : '#fff',
+                          background: translateJob?.status === 'failed' ? 'rgba(229,9,20,0.15)' : 'rgba(255,255,255,0.12)',
+                          border: translateJob?.status === 'failed' ? '1px solid rgba(229,9,20,0.5)' : '1px solid rgba(255,255,255,0.16)',
+                          borderRadius: 9999, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: isMobile ? '8px 12px' : '8px 14px',
+                          fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                        }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: isMobile ? 20 : 22 }}>subtitles</span>
+                        {!isMobile && (
+                          <span style={{ fontSize: 12 }}>
+                            {translateJob?.status === 'failed' ? 'Retry' : 'Terjemahkan'}
+                          </span>
+                        )}
+                      </motion.button>
+                    )}
+
+                    {translateJob && translateJob.status !== 'done' && translateJob.status !== 'failed' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#fff' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, minWidth: 28 }}>{translateJob.progress}%</span>
+                        <div style={{ width: isMobile ? 40 : 60, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 9999, overflow: 'hidden' }}>
+                          <motion.div
+                            style={{ height: '100%', background: 'var(--red)', borderRadius: 9999 }}
+                            animate={{ width: `${translateJob.progress}%` }}
+                            transition={{ duration: 0.4, ease: 'easeOut' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {subtitlesReady && (
+                      <motion.button whileTap={{ scale: 0.9 }} onClick={toggleSubtitles}
+                        style={{
+                          color: '#fff',
+                          background: showSubtitles ? 'rgba(229,9,20,0.95)' : 'rgba(255,255,255,0.12)',
+                          border: showSubtitles ? '1px solid rgba(229,9,20,1)' : '1px solid rgba(255,255,255,0.16)',
+                          borderRadius: 9999, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          padding: isMobile ? '8px 12px' : '8px 14px',
+                          fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                        }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: isMobile ? 20 : 22 }}>subtitles</span>
+                        {!isMobile && <span style={{ fontSize: 12 }}>{showSubtitles ? 'CC ON' : 'CC OFF'}</span>}
                       </motion.button>
                     )}
                     {!isMobile && (

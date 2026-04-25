@@ -18,3 +18,23 @@ export interface DownloadJob {
   error?: string;
   video_id?: number;
 }
+
+export interface CookiesStatus {
+  configured: boolean;
+  path: string;
+  size: number;
+}
+
+export interface CookiesTestResult {
+  ok: boolean;
+  title?: string;
+  extractor?: string;
+}
+
+export interface TranslateJob {
+  id: string;
+  video_id: number;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  progress: number;
+  error?: string;
+}

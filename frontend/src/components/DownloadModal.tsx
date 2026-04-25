@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { startDownload, getDownloadStatus, updateVideoTags } from '../api';
+import { fetchResolutions, startDownload, getDownloadStatus, updateVideoTags } from '../api';
 import type { DownloadJob } from '../types';
+import CookiesPanel from './CookiesPanel';
 
 interface Props {
   onClose: () => void;
@@ -16,6 +17,9 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
   const [tagInput, setTagInput] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resolutions, setResolutions] = useState<number[] | null>(null);
+  const [selectedResolution, setSelectedResolution] = useState<number | 'best'>('best');
+  const [loadingResolutions, setLoadingResolutions] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMobile = window.innerWidth < 640;
 
@@ -23,13 +27,28 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleFetchResolutions(e: React.FormEvent) {
     e.preventDefault();
     if (!url.trim()) return;
     setError('');
+    setLoadingResolutions(true);
+    try {
+      const data = await fetchResolutions(url.trim());
+      setResolutions(data.resolutions);
+      setSelectedResolution('best');
+    } catch {
+      setError('Could not fetch resolutions. Check the URL and try again.');
+    } finally {
+      setLoadingResolutions(false);
+    }
+  }
+
+  async function handleStartDownload() {
+    setError('');
     setSubmitting(true);
     try {
-      const { job_id } = await startDownload(url.trim());
+      const resolution = selectedResolution === 'best' ? undefined : selectedResolution;
+      const { job_id } = await startDownload(url.trim(), resolution);
       pollRef.current = setInterval(async () => {
         const status = await getDownloadStatus(job_id);
         setJob(status);
@@ -123,10 +142,10 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
         <AnimatePresence mode="wait">
 
           {/* ── State 1: URL input ─────────────────────────────────── */}
-          {!job && (
+          {!job && resolutions === null && (
             <motion.form
               key="url-form"
-              onSubmit={handleSubmit}
+              onSubmit={handleFetchResolutions}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
@@ -169,28 +188,137 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
 
               <motion.button
                 type="submit"
-                disabled={submitting}
+                disabled={loadingResolutions}
                 whileHover={{ opacity: 0.9 }}
                 whileTap={{ scale: 0.97 }}
                 style={{
                   width: '100%',
-                  background: submitting ? 'var(--surface-high)' : 'var(--red)',
-                  color: submitting ? 'var(--text-muted)' : '#fff',
+                  background: loadingResolutions ? 'var(--surface-high)' : 'var(--red)',
+                  color: loadingResolutions ? 'var(--text-muted)' : '#fff',
                   border: 'none', borderRadius: 9999,
                   padding: isMobile ? '14px 0' : '12px 0',
                   fontSize: 14, fontWeight: 700,
                   fontFamily: 'var(--font)',
-                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  cursor: loadingResolutions ? 'not-allowed' : 'pointer',
                   transition: 'background 0.2s',
                   letterSpacing: '0.02em',
                 }}
               >
-                {submitting ? 'Starting...' : 'Download'}
+                {loadingResolutions ? 'Fetching resolutions...' : 'Next →'}
               </motion.button>
+
+              <CookiesPanel />
             </motion.form>
           )}
 
-          {/* ── State 2: Downloading progress ─────────────────────── */}
+          {/* ── State 2: Resolution picker ─────────────────────────── */}
+          {!job && resolutions !== null && (
+            <motion.div
+              key="resolution-picker"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+            >
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, wordBreak: 'break-all' }}>
+                {url.length > 60 ? url.slice(0, 57) + '…' : url}
+              </p>
+
+              <label style={{
+                display: 'block', fontSize: 11,
+                textTransform: 'uppercase', letterSpacing: '0.08em',
+                color: 'var(--text-muted)', fontWeight: 700, marginBottom: 8,
+              }}>
+                Resolution
+              </label>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSelectedResolution('best')}
+                  style={{
+                    padding: '7px 16px', borderRadius: 9999, fontSize: 13, fontWeight: 600,
+                    fontFamily: 'var(--font)', cursor: 'pointer',
+                    border: selectedResolution === 'best' ? '2px solid var(--red)' : '2px solid rgba(255,255,255,0.1)',
+                    background: selectedResolution === 'best' ? 'rgba(229,9,20,0.15)' : 'var(--surface-high)',
+                    color: selectedResolution === 'best' ? 'var(--red)' : 'var(--text-muted)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  Best
+                </motion.button>
+                {resolutions.map(h => (
+                  <motion.button
+                    key={h}
+                    type="button"
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedResolution(h)}
+                    style={{
+                      padding: '7px 16px', borderRadius: 9999, fontSize: 13, fontWeight: 600,
+                      fontFamily: 'var(--font)', cursor: 'pointer',
+                      border: selectedResolution === h ? '2px solid var(--red)' : '2px solid rgba(255,255,255,0.1)',
+                      background: selectedResolution === h ? 'rgba(229,9,20,0.15)' : 'var(--surface-high)',
+                      color: selectedResolution === h ? 'var(--red)' : 'var(--text-muted)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {h}p
+                  </motion.button>
+                ))}
+              </div>
+
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{ color: 'var(--red)', fontSize: 13, marginBottom: 10, fontWeight: 500 }}
+                >
+                  {error}
+                </motion.p>
+              )}
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { setResolutions(null); setError(''); }}
+                  style={{
+                    background: 'var(--surface-high)', color: 'var(--text-muted)',
+                    border: 'none', borderRadius: 9999,
+                    padding: isMobile ? '14px 18px' : '12px 18px',
+                    fontSize: 14, fontWeight: 600,
+                    cursor: 'pointer', fontFamily: 'var(--font)',
+                  }}
+                >
+                  ← Back
+                </motion.button>
+                <motion.button
+                  type="button"
+                  disabled={submitting}
+                  whileHover={{ opacity: 0.9 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleStartDownload}
+                  style={{
+                    flex: 1,
+                    background: submitting ? 'var(--surface-high)' : 'var(--red)',
+                    color: submitting ? 'var(--text-muted)' : '#fff',
+                    border: 'none', borderRadius: 9999,
+                    padding: isMobile ? '14px 0' : '12px 0',
+                    fontSize: 14, fontWeight: 700,
+                    fontFamily: 'var(--font)',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    transition: 'background 0.2s',
+                    letterSpacing: '0.02em',
+                  }}
+                >
+                  {submitting ? 'Starting...' : `Download${selectedResolution !== 'best' ? ` (${selectedResolution}p)` : ''}`}
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── State 3: Downloading progress ─────────────────────── */}
           {job && job.status !== 'done' && job.status !== 'failed' && (
             <motion.div
               key="progress"
@@ -237,7 +365,7 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
             </motion.div>
           )}
 
-          {/* ── State 3: Failed ────────────────────────────────────── */}
+          {/* ── State 4: Failed ────────────────────────────────────── */}
           {job?.status === 'failed' && (
             <motion.div
               key="failed"
@@ -257,7 +385,7 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
               </div>
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                onClick={() => { setJob(null); setUrl(''); setError(''); }}
+                onClick={() => { setJob(null); setUrl(''); setError(''); setResolutions(null); setSelectedResolution('best'); }}
                 style={{
                   width: '100%', background: 'var(--surface-high)',
                   color: 'var(--text)', border: 'none', borderRadius: 9999,
@@ -270,7 +398,7 @@ export default function DownloadModal({ onClose, onComplete }: Props) {
             </motion.div>
           )}
 
-          {/* ── State 4: Done — add tags ────────────────────────────── */}
+          {/* ── State 5: Done — add tags ────────────────────────────── */}
           {job?.status === 'done' && (
             <motion.div
               key="done"

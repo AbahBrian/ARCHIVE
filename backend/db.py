@@ -1,6 +1,7 @@
 import sqlite3
 import threading
-import config
+
+from backend import config
 
 write_lock = threading.Lock()
 
@@ -43,6 +44,14 @@ def init_db() -> None:
                 progress   INTEGER DEFAULT 0,
                 error      TEXT,
                 video_id   INTEGER REFERENCES videos(id),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS translate_jobs (
+                id         TEXT PRIMARY KEY,
+                video_id   INTEGER NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+                status     TEXT NOT NULL DEFAULT 'pending',
+                progress   INTEGER DEFAULT 0,
+                error      TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
         """)

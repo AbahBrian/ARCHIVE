@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-import db
+
+from backend import db
 
 router = APIRouter(prefix="/api/tags", tags=["tags"])
 
